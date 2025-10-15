@@ -22,9 +22,10 @@ echo === Installing/Updating scheduled task to disable Defender Real-time protec
 echo Task Name: %TASKNAME%
 echo.
 
-:: ---- create task via PowerShell (more reliable than schtasks) ----
+:: ---- create task via PowerShell and exit from there to avoid cmd parsing bugs ----
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference = 'Stop';" ^
+  "$quiet = if ('%QUIET%' -eq '1') { $true } else { $false };" ^
   "try {" ^
   "  $Action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -Command ""Start-Sleep -Seconds %DELAY_SECS%; Set-MpPreference -DisableRealtimeMonitoring $true; $ok = !([Security.Principal.WindowsIdentity]::GetCurrent().IsSystem); ''''$(Get-Date -f o) AutoOff Result: $ok'''' | Out-File -FilePath ''%LOG%'' -Append -Encoding utf8""';" ^
   "  $Trigger = New-ScheduledTaskTrigger -AtStartup;" ^
@@ -32,24 +33,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "  $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries;" ^
   "  Register-ScheduledTask -TaskName '%TASKNAME%' -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings -Force -ErrorAction Stop | Out-Null;" ^
   "  Write-Host '[OK] Scheduled task installed successfully.';" ^
+  "  if (-not $quiet) { Write-Host ''; Write-Host 'Press any key to exit.'; [System.Console]::ReadKey() | Out-Null; }" ^
   "  exit 0;" ^
   "} catch {" ^
   "  Write-Host ('[FAIL] Failed to create scheduled task: ' + $_.Exception.Message) -ForegroundColor Red;" ^
+  "  Write-Host '        Common causes:';" ^
+  "  Write-Host '        - Tamper Protection is ON in Windows Security.'; " ^
+  "  Write-Host '        - Organizational policies (GPO/MDM) are restricting task creation.';" ^
+  "  if (-not $quiet) { Write-Host ''; Write-Host 'Press any key to exit.'; [System.Console]::ReadKey() | Out-Null; }" ^
   "  exit 1;" ^
   "}"
-  
-set "RC=%ERRORLEVEL%"
-
-if not %RC%==0 (
-    echo.
-    echo        Common causes:
-    echo        - Tamper Protection is ON in Windows Security.
-    echo        - Organizational policies (GPO/MDM) are restricting task creation.
-)
-
-if not defined QUIET (
-  echo.
-  echo Press any key to exit.
-  pause >nul
-)
-exit /b %RC%
