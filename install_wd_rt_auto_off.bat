@@ -6,15 +6,13 @@ REM install_wd_rt_auto_off.bat  [/q]  -> /q = quiet (no pause)
 set "TASKNAME=WD-RT-AutoOff@Startup"
 set "LOG=%ProgramData%\wd-rt-toggle.log"
 set "DELAY_SECS=20"
-set "QUIET="
-
 if /i "%~1"=="/q" set "QUIET=1"
 
 :: ---- robust admin check (works even if 'Server' service is stopped) ----
 fltmc >nul 2>&1
 if errorlevel 1 (
   echo [ERR] Please run this as Administrator.
-  if not defined QUIET pause
+  if not "%QUIET%"=="1" pause
   goto :END
 )
 
@@ -82,7 +80,7 @@ echo [DONE] Task "%TASKNAME%" installed. A log will be written to:
 echo        %LOG%
 
 :END
-if not defined QUIET (
+if not "%QUIET%"=="1" (
   echo.
   echo Press any key to exit.
   pause >nul
