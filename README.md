@@ -11,9 +11,11 @@ Tiny batch + PowerShell scripts to **toggle Microsoft Defender Real-time protect
 * `defender_rt_on.bat` – Enable Defender **Real-time protection**.
 * `defender_rt_off.bat` – Disable Defender **Real-time protection**.
 * `check_rt_status.bat` – Print current status (`True`/`False`).
-* `install_wd_rt_auto_off.bat` – Install a **Scheduled Task** that turns RT **OFF** at **startup** (runs as `SYSTEM`), with built-in verification and functional testing.
+* `install_wd_rt_auto_off.bat` – Install a **Scheduled Task** that turns RT **OFF** at **logon** (runs as `SYSTEM`), with built-in verification and functional testing.
 * `remove_wd_rt_auto_off.bat` – Remove that Scheduled Task.
 * `verify_wd_rt_auto_off.bat` – Standalone verification script for the scheduled task (optional).
+* `repair_wd_rt_task.bat` – Repair/recreate the scheduled task with boot trigger and functional testing.
+* `wd_rt_task_doctor.bat` – Diagnostic and auto-repair script for the scheduled task.
 
 All scripts require **Administrator**.
 
@@ -44,9 +46,9 @@ defender_rt_on.bat
 check_rt_status.bat
 ```
 
-### Auto-disable on every reboot
+### Auto-disable on every logon
 
-Creates a startup task that runs as **SYSTEM** and flips RT off silently after boot. The installer now includes built-in verification and functional testing.
+Creates a logon task that runs as **SYSTEM** and flips RT off silently after user login. The installer now includes built-in verification and functional testing.
 
 ```bat
 install_wd_rt_auto_off.bat
@@ -58,22 +60,37 @@ Remove the task anytime:
 remove_wd_rt_auto_off.bat
 ```
 
+### Repair and diagnose the task
+
+If the auto-disable task isn't working, use these scripts to diagnose and repair:
+
+```bat
+# Comprehensive diagnostic and auto-repair
+wd_rt_task_doctor.bat
+
+# Force recreate with boot trigger
+repair_wd_rt_task.bat
+
+# Verify existing task functionality
+verify_wd_rt_auto_off.bat
+```
+
 ---
 
 ## How it works (Mermaid)
 
-### 1) Auto-disable at startup (flow)
+### 1) Auto-disable at logon (flow)
 
 ```mermaid
 flowchart TD
-    A[Windows boots] --> B[Task Scheduler triggers<br/>WD-RT-AutoOff@Startup (SYSTEM)]
-    B --> C[PowerShell delay 20s<br/>(let Defender initialize)]
-    C --> D[Set-MpPreference<br/>-DisableRealtimeMonitoring $true]
-    D --> E{Success?}
-    E -- Yes --> F[Write log to %ProgramData%\\wd-rt-toggle.log]
-    E -- No --> G[Likely Tamper Protection or GPO/MDM]
-    F --> H[RT = OFF]
-    G --> H2[RT may remain ON]
+     A[User logs on] --> B[Task Scheduler triggers<br/>WD-RT-AutoOff@Logon (SYSTEM)]
+     B --> C[PowerShell delay 30s<br/>(let Defender initialize)]
+     C --> D[Set-MpPreference<br/>-DisableRealtimeMonitoring $true]
+     D --> E{Success?}
+     E -- Yes --> F[Write log to %ProgramData%\\wd-rt-toggle.log]
+     E -- No --> G[Likely Tamper Protection or GPO/MDM]
+     F --> H[RT = OFF]
+     G --> H2[RT may remain ON]
 ```
 
 ### 2) Manual toggle (sequence)
@@ -120,8 +137,8 @@ stateDiagram-v2
 
 ## What the installer creates
 
-* **Scheduled Task name:** `WD-RT-AutoOff@Startup`
-  Trigger: **At startup** (Logon trigger) → runs as **SYSTEM**, **highest privileges**
+* **Scheduled Task name:** `WD-RT-AutoOff@Logon`
+  Trigger: **At logon** → runs as **SYSTEM**, **highest privileges**
 * **Log file:** `%ProgramData%\wd-rt-toggle.log` (one line per run)
 * **Installer now includes:** Built-in verification and functional testing
 
@@ -149,10 +166,10 @@ Expected output: `RealTimeProtectionEnabled = False`.
   * Ensure the `.bat` was run **as Administrator**.
   * Org policies (GPO/MDM) or 3rd-party AV may re-enable Defender.
 
-* **Task exists but RT stays ON after boot**
+* **Task exists but RT stays ON after logon**
 
-  * Increase the delay inside the installer (default 20s, can be adjusted) and reinstall.
-  * Some environments force Defender back ON shortly after startup.
+  * Increase the delay inside the installer (default 30s, can be adjusted) and reinstall.
+  * Some environments force Defender back ON shortly after logon.
 
 * **Check current state quickly**
 
@@ -179,5 +196,5 @@ Copyright (c) 2025 **Wei Jun**
 
 ## Credits
 
-* Built-in PowerShell cmdlets: `Set-MpPreference`, `Get-MpComputerStatus`, `Start-Service`.
+* Built-in PowerShell cmdlets: `Set-MpPreference`, `Get-MpComputerStatus`, `Start-Service`, `Register-ScheduledTask`.
 * Pure **Batch + PowerShell**. No external dependencies.
