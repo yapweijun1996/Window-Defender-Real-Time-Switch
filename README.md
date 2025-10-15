@@ -67,7 +67,7 @@ remove_wd_rt_auto_off.bat
 ```mermaid
 flowchart TD
     A[Windows boots] --> B[Task Scheduler triggers<br/>WD-RT-AutoOff@Startup (SYSTEM)]
-    B --> C[PowerShell delay 15–30s<br/>(let Defender initialize)]
+    B --> C[PowerShell delay 20s<br/>(let Defender initialize)]
     C --> D[Set-MpPreference<br/>-DisableRealtimeMonitoring $true]
     D --> E{Success?}
     E -- Yes --> F[Write log to %ProgramData%\\wd-rt-toggle.log]
@@ -121,14 +121,15 @@ stateDiagram-v2
 ## What the installer creates
 
 * **Scheduled Task name:** `WD-RT-AutoOff@Startup`
-  Trigger: **At startup** → runs as **SYSTEM**, **highest privileges**
+  Trigger: **At startup** (Logon trigger) → runs as **SYSTEM**, **highest privileges**
 * **Log file:** `%ProgramData%\wd-rt-toggle.log` (one line per run)
+* **Installer now includes:** Built-in verification and functional testing
 
 ---
 
 ## Verify it works (optional)
 
-If you added the provided verifier, run as **Administrator**:
+The installer now includes built-in verification and functional testing. For standalone verification, run as **Administrator**:
 
 ```bat
 verify_wd_rt_auto_off.bat
@@ -150,7 +151,7 @@ Expected output: `RealTimeProtectionEnabled = False`.
 
 * **Task exists but RT stays ON after boot**
 
-  * Increase the delay inside the installer (e.g., 15s → 30s) and reinstall.
+  * Increase the delay inside the installer (default 20s, can be adjusted) and reinstall.
   * Some environments force Defender back ON shortly after startup.
 
 * **Check current state quickly**
