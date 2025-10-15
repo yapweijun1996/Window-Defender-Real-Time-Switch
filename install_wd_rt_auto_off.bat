@@ -4,10 +4,10 @@ setlocal EnableExtensions
 :: install_wd_rt_auto_off.bat [/q] - /q = quiet (no pause)
 
 :: ---- settings ----
-set "TASKNAME=WD-RT-AutoOff@Startup"
+set "TASKNAME=WD-RT-AutoOff@Logon"
 set "LOG=%ProgramData%\wd-rt-toggle.log"
-set "DELAY_SECS=20"
-set "WAIT_SECS=5"
+set "DELAY_SECS=30"
+set "WAIT_SECS=20"
 set "QUIET="
 if /i "%~1" equ "/q" set "QUIET=1"
 
@@ -36,7 +36,7 @@ echo function fail($m){Write-Host ('[FAIL] ' + $m) -ForegroundColor Red} >> "%PS
 echo try { >> "%PS_SCRIPT%"
 echo   $Command = 'Start-Sleep -Seconds %DELAY_SECS%; Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue; $isSystem = [Security.Principal.WindowsIdentity]::GetCurrent().IsSystem; $timestamp = Get-Date -Format o; $rt = $null; $rtError = $null; try { $rt = (Get-MpComputerStatus).RealTimeProtectionEnabled } catch { $rtError = $_.Exception.Message }; $logLine = if ($rtError) { ''{0} AutoOff Result: IsSystem={1} RTError={2}'' -f $timestamp, $isSystem, $rtError } else { ''{0} AutoOff Result: IsSystem={1} RealTimeProtectionEnabled={2}'' -f $timestamp, $isSystem, $rt }; $logLine ^| Out-File -FilePath ''%LOG%'' -Append -Encoding utf8' >> "%PS_SCRIPT%"
 echo   $Action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -WindowStyle Hidden -Command `"$($Command)`"" >> "%PS_SCRIPT%"
-echo   $Trigger = New-ScheduledTaskTrigger -AtStartup >> "%PS_SCRIPT%"
+echo   $Trigger = New-ScheduledTaskTrigger -AtLogon >> "%PS_SCRIPT%"
 echo   $Principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest >> "%PS_SCRIPT%"
 echo   $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries >> "%PS_SCRIPT%"
 echo   Register-ScheduledTask -TaskName $tn -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings -Force -ErrorAction Stop ^| Out-Null >> "%PS_SCRIPT%"
