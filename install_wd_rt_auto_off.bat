@@ -23,12 +23,15 @@ echo Log File  : %LOG%
 echo Delay (s) : %DELAY_SECS%
 echo.
 
-:: ---- PowerShell payload (delay -> disable RT -> log) ----
-set "PS_CMD=Start-Sleep -Seconds %DELAY_SECS%; "
-set "PS_CMD=%PS_CMD% Start-Service WinDefend -ErrorAction SilentlyContinue; "
-set "PS_CMD=%PS_CMD% Set-MpPreference -DisableRealtimeMonitoring $true; "
-set "PS_CMD=%PS_CMD% $ok = (Get-MpComputerStatus).RealTimeProtectionEnabled -eq $false; "
-set "PS_CMD=%PS_CMD% '['+(Get-Date -Format o)+'] AutoOff result: '+$ok | Out-File -FilePath '%LOG%' -Append -Encoding utf8"
+:: ---- PowerShell payload file (write .ps1 to ProgramData) ----
+set "PS1=%ProgramData%\wd-rt-autoff.ps1"
+(
+  echo Start-Sleep -Seconds %DELAY_SECS%
+  echo Start-Service WinDefend -ErrorAction SilentlyContinue
+  echo Set-MpPreference -DisableRealtimeMonitoring $true
+  echo $ok = (Get-MpComputerStatus).RealTimeProtectionEnabled -eq $false
+  echo '['+(Get-Date -Format o)+'] AutoOff result: '+$ok ^| Out-File -FilePath '%LOG%' -Append -Encoding utf8
+) > "%PS1%"
 
 :: ---- create (or replace) task ----
 echo [*] Creating task (SYSTEM, Highest, At Startup) ...
@@ -37,7 +40,7 @@ schtasks /Create ^
   /SC ONSTART ^
   /RU "SYSTEM" ^
   /RL HIGHEST ^
-  /TR "powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"%PS_CMD%\"" ^
+  /TR "powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%PS1%\"" ^
   /F
 
 set "RC=%ERRORLEVEL%"
