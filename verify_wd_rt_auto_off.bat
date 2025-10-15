@@ -37,8 +37,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "ok('Task exists');" ^
   "$isSystem = ($task.Principal.UserId -eq 'SYSTEM'); if($isSystem){ ok('Runs as SYSTEM') } else { warn('Runs as ' + $task.Principal.UserId + ' (expected SYSTEM)') }" ^
   "$isHighest = ($task.Principal.RunLevel -eq 'Highest'); if($isHighest){ ok('Highest privileges') } else { warn('Run level is not Highest') }" ^
-  "$hasBoot = $false; foreach($t in $task.Triggers){ if($t.TriggerType -eq 'Boot'){ $hasBoot=$true } }" ^
-  "if($hasBoot){ ok('Startup (Boot) trigger present') } else { warn('No Startup trigger found') }" ^
+  "$hasStartup = $false; foreach($t in $task.Triggers){ if($t.CimClass.ClassName -like '*BootTrigger*' -or $t.CimClass.ClassName -like '*LogonTrigger*'){ $hasStartup=$true } }" ^
+  "if($hasStartup){ ok('Startup or Logon trigger present') } else { warn('No Startup or Logon trigger found') }" ^
   "Write-Host ('LastRunTime     : ' + $task.LastRunTime); Write-Host ('LastTaskResult : ' + $task.LastTaskResult);" ^
   "" ^
   "Write-Host ''; Write-Host '=== Functional test: run the task now and check Defender RT ===';" ^

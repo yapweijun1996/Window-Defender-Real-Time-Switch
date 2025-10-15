@@ -11,8 +11,9 @@ Tiny batch + PowerShell scripts to **toggle Microsoft Defender Real-time protect
 * `defender_rt_on.bat` – Enable Defender **Real-time protection**.
 * `defender_rt_off.bat` – Disable Defender **Real-time protection**.
 * `check_rt_status.bat` – Print current status (`True`/`False`).
-* `install_wd_rt_auto_off.bat` – Install a **Scheduled Task** that turns RT **OFF** at **startup** (runs as `SYSTEM`).
+* `install_wd_rt_auto_off.bat` – Install a **Scheduled Task** that turns RT **OFF** at **startup** (runs as `SYSTEM`), with built-in verification and functional testing.
 * `remove_wd_rt_auto_off.bat` – Remove that Scheduled Task.
+* `verify_wd_rt_auto_off.bat` – Standalone verification script for the scheduled task (optional).
 
 All scripts require **Administrator**.
 
@@ -45,7 +46,7 @@ check_rt_status.bat
 
 ### Auto-disable on every reboot
 
-Creates a startup task that runs as **SYSTEM** and flips RT off silently after boot.
+Creates a startup task that runs as **SYSTEM** and flips RT off silently after boot. The installer now includes built-in verification and functional testing.
 
 ```bat
 install_wd_rt_auto_off.bat
