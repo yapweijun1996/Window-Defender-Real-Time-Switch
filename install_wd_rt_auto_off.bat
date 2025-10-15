@@ -10,16 +10,20 @@ set "QUIET="
 
 if /i "%~1"=="/q" set "QUIET=1"
 
-:: ---- admin check ----
-net session >nul 2>&1
+:: ---- robust admin check (works even if 'Server' service is stopped) ----
+fltmc >nul 2>&1
 if errorlevel 1 (
   echo [ERR] Please run this as Administrator.
   if not defined QUIET pause
-  exit /b 1
+  goto :END
 )
 
 echo.
 echo === Create startup task to disable Defender Real-time protection ===
+echo Task Name : %TASKNAME%
+echo Log File  : %LOG%
+echo Delay (s) : %DELAY_SECS%
+echo.
 
 :: ---- PowerShell payload (delay -> disable RT -> log) ----
 set "PS_CMD=Start-Sleep -Seconds %DELAY_SECS%; "
@@ -29,7 +33,7 @@ set "PS_CMD=%PS_CMD% $ok = (Get-MpComputerStatus).RealTimeProtectionEnabled -eq 
 set "PS_CMD=%PS_CMD% '['+(Get-Date -Format o)+'] AutoOff result: '+$ok | Out-File -FilePath '%LOG%' -Append -Encoding utf8"
 
 :: ---- create (or replace) task ----
-echo [*] Creating task "%TASKNAME%" (SYSTEM, highest, at startup) ...
+echo [*] Creating task (SYSTEM, Highest, At Startup) ...
 schtasks /Create ^
   /TN "%TASKNAME%" ^
   /SC ONSTART ^
@@ -38,16 +42,17 @@ schtasks /Create ^
   /TR "powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"%PS_CMD%\"" ^
   /F
 
-if errorlevel 1 (
-  echo [FAIL] schtasks /Create failed. Possible causes:
-  echo        - Tamper Protection ON (blocks Set-MpPreference effects at runtime)
+set "RC=%ERRORLEVEL%"
+if not %RC%==0 (
+  echo [FAIL] schtasks /Create failed (errorlevel=%RC%).
+  echo        Common causes:
+  echo        - Tamper Protection ON (blocks effect at runtime)
   echo        - Policy/GPO restrictions
-  echo        - PowerShell execution policy restrictions
-  if not defined QUIET pause
-  exit /b 2
+  echo        - PowerShell policy issues
+  goto :END
 )
 
-:: ---- confirm task exists ----
+:: ---- show key task details ----
 for /f "tokens=1,* delims=:" %%A in ('schtasks /Query /TN "%TASKNAME%" /V /FO LIST ^| findstr /I "TaskName Run As User Run Level Triggers Last Run Time Last Result"') do (
   echo %%A:%%B
 )
@@ -75,5 +80,10 @@ if errorlevel 1 (
 echo.
 echo [DONE] Task "%TASKNAME%" installed. A log will be written to:
 echo        %LOG%
-if not defined QUIET pause
-exit /b 0
+
+:END
+if not defined QUIET (
+  echo.
+  echo Press any key to exit.
+  pause >nul
+)

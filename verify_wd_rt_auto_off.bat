@@ -7,18 +7,23 @@ set "TASKNAME=WD-RT-AutoOff@Startup"
 set "WAIT_SECS=10"
 set "QUIET="
 
-if not "%~1"=="" (
-  for /f "delims=/ tokens=1" %%A in ("%~1") do set "WAIT_SECS=%%~A"
+:parse_args
+if /i "%~1"=="/q" (
+  set "QUIET=1"
+  shift /1
+  goto :parse_args
 )
-if /i "%~1"=="/q" set "QUIET=1"
-if /i "%~2"=="/q" set "QUIET=1"
+if not "%~1"=="" (
+  set "WAIT_SECS=%~1"
+)
 
 REM -------- admin check --------
 net session >nul 2>&1
 if errorlevel 1 (
   echo [ERR] Please run this as Administrator.
   if not defined QUIET pause
-  exit /b 3
+  set "RC=3"
+  goto :END
 )
 
 echo.
@@ -34,7 +39,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$isHighest = ($task.Principal.RunLevel -eq 'Highest'); if($isHighest){ ok('Highest privileges') } else { warn('Run level is not Highest') }" ^
   "$hasBoot = $false; foreach($t in $task.Triggers){ if($t.TriggerType -eq 'Boot'){ $hasBoot=$true } }" ^
   "if($hasBoot){ ok('Startup (Boot) trigger present') } else { warn('No Startup trigger found') }" ^
-  "$info=Get-ScheduledTaskInfo -TaskName $tn; Write-Host ('LastRunTime     : ' + $info.LastRunTime); Write-Host ('LastTaskResult : ' + $info.LastTaskResult);" ^
+  "Write-Host ('LastRunTime     : ' + $task.LastRunTime); Write-Host ('LastTaskResult : ' + $task.LastTaskResult);" ^
   "" ^
   "Write-Host ''; Write-Host '=== Functional test: run the task now and check Defender RT ===';" ^
   "try{ Start-ScheduledTask -TaskName $tn -ErrorAction Stop } catch{ warn('Could not start task: ' + $_.Exception.Message) }" ^
@@ -45,11 +50,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "if($rt -eq $false){ ok('Real-time protection is OFF after task run'); exit 0 } else { warn('Real-time protection is still ON — Tamper Protection or policy may be re-enabling it.'); exit 2 }"
 
 set "RC=%ERRORLEVEL%"
-echo.
-if %RC%==0  echo RESULT: PASS
-if %RC%==1  echo RESULT: FAIL (Task missing or misconfigured)
-if %RC%==2  echo RESULT: WARN (Task ran but RT stayed ON — check Tamper Protection / GPO)
-if %RC%==3  echo RESULT: FAIL (Not admin)
 
-if not defined QUIET pause
-exit /b %RC%
+:END
+echo.
+if defined RC (
+  if %RC%==0  echo RESULT: PASS
+  if %RC%==1  echo RESULT: FAIL (Task missing or misconfigured)
+  if %RC%==2  echo RESULT: WARN (Task ran but RT stayed ON — check Tamper Protection / GPO)
+  if %RC%==3  echo RESULT: FAIL (Not admin)
+)
+
+if not defined QUIET (
+  echo.
+  echo Press any key to exit.
+  pause >nul
+)
