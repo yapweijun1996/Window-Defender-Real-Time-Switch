@@ -83,9 +83,9 @@ verify_wd_rt_auto_off.bat
 
 ```mermaid
 flowchart TD
-     A[User logs on] --> B[Task Scheduler triggers\nWD-RT-AutoOff@Logon (SYSTEM)]
-     B --> C[PowerShell delay 30s\n(let Defender initialize)]
-     C --> D[Set-MpPreference\n-DisableRealtimeMonitoring $true]
+     A[User logs on] --> B[Task Scheduler triggers WD-RT-AutoOff@Logon SYSTEM]
+     B --> C[PowerShell delay 30s let Defender initialize]
+     C --> D[Set-MpPreference -DisableRealtimeMonitoring $true]
      D --> E{Success?}
      E -- Yes --> F[Write log to %ProgramData%\\wd-rt-toggle.log]
      E -- No --> G[Likely Tamper Protection or GPO/MDM]
