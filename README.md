@@ -59,6 +59,64 @@ remove_wd_rt_auto_off.bat
 
 ---
 
+## How it works (Mermaid)
+
+### 1) Auto-disable at startup (flow)
+
+```mermaid
+flowchart TD
+    A[Windows boots] --> B[Task Scheduler triggers<br/>WD-RT-AutoOff@Startup (SYSTEM)]
+    B --> C[PowerShell delay 15–30s<br/>(let Defender initialize)]
+    C --> D[Set-MpPreference<br/>-DisableRealtimeMonitoring $true]
+    D --> E{Success?}
+    E -- Yes --> F[Write log to %ProgramData%\\wd-rt-toggle.log]
+    E -- No --> G[Likely Tamper Protection or GPO/MDM]
+    F --> H[RT = OFF]
+    G --> H2[RT may remain ON]
+```
+
+### 2) Manual toggle (sequence)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Batch as Batch (.bat)
+    participant PS as PowerShell
+    participant Defender
+
+    User->>Batch: Run defender_rt_off.bat (Admin)
+    Batch->>PS: Set-MpPreference -DisableRealtimeMonitoring $true
+    PS->>Defender: Apply preference
+    Defender-->>PS: Status = OFF/ON (depending on policy)
+    PS-->>User: RealTimeProtectionEnabled = False/True
+
+    User->>Batch: Run defender_rt_on.bat (Admin)
+    Batch->>PS: Set-MpPreference -DisableRealtimeMonitoring $false
+    PS->>Defender: Apply preference
+    Defender-->>PS: Status = ON
+    PS-->>User: RealTimeProtectionEnabled = True
+```
+
+### 3) Defender RT state (with policies)
+
+```mermaid
+stateDiagram-v2
+    [*] --> ON
+    ON --> OFF: defender_rt_off.bat<br/>auto task
+    OFF --> ON: defender_rt_on.bat<br/>policy re-enable
+    ON --> ON: GPO/MDM or Tamper Protection blocks change
+    OFF --> OFF: Task rerun / user keeps off
+
+    note right of OFF
+      OFF = Real-time protection disabled.
+      May revert to ON if:
+      • Tamper Protection is ON
+      • Org policy enforces Defender
+    end note
+```
+
+---
+
 ## What the installer creates
 
 * **Scheduled Task name:** `WD-RT-AutoOff@Startup`
