@@ -1,20 +1,20 @@
-# wd-rt-toggle
+# Window-Defender-Real-Time-Switch
 
 Tiny batch + PowerShell scripts to **toggle Microsoft Defender Real-time protection** and optionally **auto-disable it at startup**.
 
-> ⚠️ **Use at your own risk.** Turning off real-time protection lowers security. On managed (work/school) PCs, policies may block these changes.
+> ⚠️ **Use at your own risk.** Disabling real-time protection reduces security. On managed (work/school) PCs, policies may block these changes.
 
 ---
 
-## Contents
+## Files
 
 * `defender_rt_on.bat` – Enable Defender **Real-time protection**.
 * `defender_rt_off.bat` – Disable Defender **Real-time protection**.
 * `check_rt_status.bat` – Print current status (`True`/`False`).
-* `install_wd_rt_auto_off.bat` – Create a **Scheduled Task** to auto-disable RT at every **startup**.
+* `install_wd_rt_auto_off.bat` – Install a **Scheduled Task** that turns RT **OFF** at **startup** (runs as `SYSTEM`).
 * `remove_wd_rt_auto_off.bat` – Remove that Scheduled Task.
 
-All scripts are Windows-native and require **Administrator**.
+All scripts require **Administrator**.
 
 ---
 
@@ -24,7 +24,7 @@ All scripts are Windows-native and require **Administrator**.
 2. **Tamper Protection** must be **OFF**
    Windows Security → *Virus & threat protection* → *Tamper Protection*.
    If it’s ON, Windows will block the change.
-3. On work/school devices, **GPO/MDM** may prevent changes.
+3. On work/school devices, **GPO/MDM** may override these settings.
 
 ---
 
@@ -43,16 +43,13 @@ defender_rt_on.bat
 check_rt_status.bat
 ```
 
-### Auto-disable on every reboot (background)
+### Auto-disable on every reboot
 
-Creates a **startup** task that runs as **SYSTEM** and flips RT off silently.
+Creates a startup task that runs as **SYSTEM** and flips RT off silently after boot.
 
 ```bat
 install_wd_rt_auto_off.bat
 ```
-
-* A small delay is used to let Defender initialize, then `Set-MpPreference -DisableRealtimeMonitoring $true` is applied.
-* A log line is appended to `%ProgramData%\wd-rt-toggle.log`.
 
 Remove the task anytime:
 
@@ -62,12 +59,25 @@ remove_wd_rt_auto_off.bat
 
 ---
 
-## What gets created
+## What the installer creates
 
 * **Scheduled Task name:** `WD-RT-AutoOff@Startup`
-  Trigger: `At startup` (runs as `SYSTEM`, highest privileges)
+  Trigger: **At startup** → runs as **SYSTEM**, **highest privileges**
+* **Log file:** `%ProgramData%\wd-rt-toggle.log` (one line per run)
 
-* **Log file:** `%ProgramData%\wd-rt-toggle.log` (optional status lines)
+---
+
+## Verify it works (optional)
+
+If you added the provided verifier, run as **Administrator**:
+
+```bat
+verify_wd_rt_auto_off.bat
+:: or wait longer before checking (in seconds)
+verify_wd_rt_auto_off.bat 30
+```
+
+Expected output: `RealTimeProtectionEnabled = False`.
 
 ---
 
@@ -76,15 +86,15 @@ remove_wd_rt_auto_off.bat
 * **“Access is denied” / “UnauthorizedAccess” / no effect**
 
   * Turn **Tamper Protection** OFF.
-  * Make sure you launched the `.bat` **as Administrator**.
-  * Some organizations enforce Defender via **Group Policy/MDM** (cannot be overridden).
+  * Ensure the `.bat` was run **as Administrator**.
+  * Org policies (GPO/MDM) or 3rd-party AV may re-enable Defender.
 
 * **Task exists but RT stays ON after boot**
 
-  * Open Windows Security soon after logging in—if it flips back ON automatically, a policy or third-party AV is enforcing it.
-  * Increase the delay in the installer script (e.g., from 15s to 30s) and reinstall the task.
+  * Increase the delay inside the installer (e.g., 15s → 30s) and reinstall.
+  * Some environments force Defender back ON shortly after startup.
 
-* **Check current state**
+* **Check current state quickly**
 
   ```bat
   check_rt_status.bat
@@ -94,31 +104,20 @@ remove_wd_rt_auto_off.bat
 
 ---
 
-## Safety & Disclaimer
+## Security note
 
-These scripts modify Windows Defender settings and reduce protection. **Only use in trusted, isolated environments** (e.g., dev machines, labs). You are responsible for compliance with your organization’s policies and local laws.
+These scripts deliberately weaken protection. **Use only on trusted, isolated machines** (dev/lab). You are responsible for complying with your organization’s policies and local laws.
 
 ---
 
 ## License
 
-MIT — do whatever you want, but no warranty.
-
-```
-MIT License
-
-Copyright (c) 2025 <Your Name>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy...
-```
+MIT — see `LICENSE` for details.
+Copyright (c) 2025 **Wei Jun**
 
 ---
 
 ## Credits
 
-* Uses built-in PowerShell cmdlets: `Set-MpPreference`, `Get-MpComputerStatus`, `Start-Service`.
-* Pure batch + PowerShell; no external dependencies.
-
----
-
-**Tip（简中小贴士）**：如果开机后自动又被打开，多半是 **Tamper Protection** 或公司策略在强制开启；先关掉 Tamper Protection，再以管理员运行脚本。
+* Built-in PowerShell cmdlets: `Set-MpPreference`, `Get-MpComputerStatus`, `Start-Service`.
+* Pure **Batch + PowerShell**. No external dependencies.
